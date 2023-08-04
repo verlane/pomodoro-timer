@@ -4,6 +4,7 @@
 #Warn All, Off
 #ErrorStdOut
 Persistent
+InstallKeybdHook
 InstallMouseHook
 
 WINDOW_TITLE := "BSB Pomodoro Timer"
