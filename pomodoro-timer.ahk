@@ -25,7 +25,7 @@ if (positionY < 0 || positionY > (A_ScreenHeight - 100)) {
     positionY := 0
 }
 
-workCount := LoadWorkCount()
+pomodoroCount := LoadPomodoroCount()
 timerStatus := ""
 elapsedTime := 0
 
@@ -33,26 +33,27 @@ elapsedTime := 0
 TraySeticon(A_ScriptDir . "\pomodoro-timer.ico")
 MyGui := Gui("-Caption -Border +ToolWindow +AlwaysOnTop", WINDOW_TITLE)
 MyGui.SetFont("s10", "Consolas")
+MyGui.OnEvent("Escape", (*) => StopTimer())
 
-workCountLabel := Format("{:02d}:00 {:02d}", Floor(TIME_TO_FOCUS / 60), workCount)
+workCountLabel := Format("{:02d}:00 {:02d}", Floor(TIME_TO_FOCUS / 60), pomodoroCount)
 ElapsedTimeText := MyGui.Add("Text", "x2 y3 w140 h20", workCountLabel)
 
 StartTimerButton := MyGui.Add("Button", "x66 y0 w50 h20 Default", "&Start")
-StartTimerButton.OnEvent("Click", StartTimer)
+StartTimerButton.OnEvent("Click", (*) => StartTimer())
 
 StopTimerButton := MyGui.Add("Button", "x116 y0 w50 h20", "S&top")
-StopTimerButton.OnEvent("Click", StopTimer)
+StopTimerButton.OnEvent("Click", (*) => StopTimer())
 
 QuitButton := MyGui.Add("Button", "x166 y0 w20 h20", "&X")
-QuitButton.OnEvent("Click", Quit)
+QuitButton.OnEvent("Click", (*) => Quit())
 
-WorkCountProgress := MyGui.Add("Progress", "x-1 y0 w" . (GUI_MIN_WIDTH + 2) . " h3 -Smooth", (workCount * 100 / FINISH_WORK_COUNT))
+WorkCountProgress := MyGui.Add("Progress", "x-1 y0 w" . (GUI_MIN_WIDTH + 2) . " h3 -Smooth", (pomodoroCount * 100 / FINISH_WORK_COUNT))
 MyGui.Show("x" . positionX . " y" . positionY . " w" . GUI_MAX_WIDTH . " h20")
 
 OnMessage(0x200, PomoWmMouseMove)
 
 ; Start timer function
-StartTimer(*) {
+StartTimer() {
     global
     if (elapsedTime <= 0) {
         currentTime := TIME_TO_FOCUS
@@ -65,7 +66,7 @@ StartTimer(*) {
 }
 
 ; Stop timer function
-StopTimer(*) {
+StopTimer() {
     ShowGui()
     MyGui.BackColor := GetDefaultGuiColor()
     SetTimer(TimerHandler, 0)
@@ -90,7 +91,7 @@ TimerHandler() {
     elapsedTime := elapsedTime + 1
     timeLeft := currentTime - elapsedTime
 
-    progressValue := (workCount * TIME_TO_FOCUS + elapsedTime) * 100 / (FINISH_WORK_COUNT * TIME_TO_FOCUS)
+    progressValue := (pomodoroCount * TIME_TO_FOCUS + elapsedTime) * 100 / (FINISH_WORK_COUNT * TIME_TO_FOCUS)
     WorkCountProgress.Value := progressValue
     if (progressValue >= 100) {
         WorkCountProgress.Opt("+cBlue")
@@ -100,9 +101,9 @@ TimerHandler() {
         elapsedTime := 0
         if (timerStatus == "W") {
             SoundPlay A_ScriptDir . "\audio\Sound1.mp3"
-            workCount := workCount + 1
-            WriteWorkCount(workCount)
-            ShowLabel(timeLeft, timerStatus, workCount)
+            pomodoroCount := pomodoroCount + 1
+            WritePomodoroCount(pomodoroCount)
+            ShowLabel(timeLeft, timerStatus, pomodoroCount)
             if (MsgBox("To keep working?", "Pomodoro Timer Alert", 1) == "OK") {
                 currentTime := TIME_TO_FOCUS
                 timerStatus := "W"
@@ -112,7 +113,7 @@ TimerHandler() {
             }
         } else {
             SoundPlay A_ScriptDir . "\audio\Sound2.mp3"
-            ShowLabel(timeLeft, timerStatus, workCount)
+            ShowLabel(timeLeft, timerStatus, pomodoroCount)
             if (MsgBox("Start working?", "Pomodoro Timer Alert", 1) == "OK") {
                 currentTime := TIME_TO_FOCUS
                 timerStatus := "W"
@@ -123,10 +124,10 @@ TimerHandler() {
             }
         }
     }
-    ShowLabel(timeLeft, timerStatus, workCount)
+    ShowLabel(timeLeft, timerStatus, pomodoroCount)
 }
 
-Quit(*) {
+Quit() {
     ExitApp
 }
 
@@ -139,18 +140,18 @@ ShowGui(fullFlag := true) {
     }
 }
 
-ShowLabel(timeLeft, timerStatus, workCount) {
+ShowLabel(timeLeft, timerStatus, pomodoroCount) {
     minutesLeft := floor(timeLeft / 60)
     secondsLeft := mod(timeLeft, 60)
-    ElapsedTimeText.Text := Format("{:02d}:{:02d} {:02d}", minutesLeft, secondsleft, workCount)
+    ElapsedTimeText.Text := Format("{:02d}:{:02d} {:02d}", minutesLeft, secondsleft, pomodoroCount)
 }
 
-WriteWorkCount(count) {
+WritePomodoroCount(count) {
     nDate := FormatTime(A_Now, "yyyyMMdd")
     IniWrite(count, "pomodoro-timer.ini", "Date", nDate)
 }
 
-LoadWorkCount() {
+LoadPomodoroCount() {
     nDate := FormatTime(A_Now, "yyyyMMdd")
     count := GetIniValue("Date", nDate, 0)
     if (count == "ERROR") {
@@ -194,15 +195,9 @@ SavePosition() {
     }
     IniWrite(positionX, "pomodoro-timer.ini", "Position", "X")
     IniWrite(positionY, "pomodoro-timer.ini", "Position", "Y")
-    WinMove positionX, positionY, , , WINDOW_TITLE
+    WinMove positionX, positionY, , , "ahk_id " MyGui.Hwnd
 }
 
 GetIniValue(section, key, defaultValue := "") {
     return IniRead("pomodoro-timer.ini", section, key, defaultValue)
-}
-
-#HotIf WinActive(WINDOW_TITLE)
-
-Esc:: {
-    StopTimer()
 }
