@@ -1,5 +1,5 @@
 ﻿; Help: Start BSB Pomodoro Timer
-#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2
 #SingleInstance Force
 #Warn All, Off
 #ErrorStdOut
@@ -11,7 +11,7 @@ WINDOW_TITLE := "BSB Pomodoro Timer"
 FINISH_WORK_COUNT := 16
 TIME_TO_FOCUS := 25 * 60
 TIME_TO_REST := 5 * 60
-TIME_TO_STOP_AUTO := 1 * 60 * 1000
+TIME_TO_STOP_AUTO := 1 * 60 * 1000 ; 1 min
 GUI_MIN_WIDTH := 64 
 GUI_MAX_WIDTH := 186
 
@@ -51,6 +51,8 @@ WorkCountProgress := MyGui.Add("Progress", "x-1 y0 w" . (GUI_MIN_WIDTH + 2) . " 
 MyGui.Show("x" . positionX . " y" . positionY . " w" . GUI_MAX_WIDTH . " h20")
 
 OnMessage(0x200, PomoWmMouseMove)
+
+StartTimer()
 
 ; Start timer function
 StartTimer() {
