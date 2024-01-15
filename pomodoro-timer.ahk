@@ -17,6 +17,8 @@ GUI_MAX_WIDTH := 186
 
 positionX := GetIniValue("Position", "X", -1)
 positionY := GetIniValue("Position", "Y", -1)
+startTimerAtStartup := GetIniValue("General", "StartTimerAtStartup", true)
+skippingBreakTimes := GetIniValue("General", "SkippingBreakTimes", 0)
 
 if (positionX < 0 || positionX > (A_ScreenWidth - 100)) {
     positionX := 0
@@ -28,6 +30,18 @@ if (positionY < 0 || positionY > (A_ScreenHeight - 100)) {
 pomodoroCount := LoadPomodoroCount()
 timerStatus := ""
 elapsedTime := 0
+
+; Tray Settings
+tray := A_TrayMenu ; For convenience.
+tray.Add()
+tray.Add("Start Timer at Startup", TrayStartTimerAtStartupEvent)
+tray.Add()
+tray.Add("Skipping 14 break times", TraySkippingBreakTimesEvent)
+tray.Add("Skipping 8 break times", TraySkippingBreakTimesEvent)
+tray.Add("Skipping 6 break times", TraySkippingBreakTimesEvent)
+tray.Add("Skipping 4 break times", TraySkippingBreakTimesEvent)
+tray.Add("Skipping 0 break times", TraySkippingBreakTimesEvent)
+tray.Check("Skipping " skippingBreakTimes " break times")
 
 ; GUI Settings
 TraySeticon(A_ScriptDir . "\pomodoro-timer.ico")
@@ -52,7 +66,29 @@ MyGui.Show("x" . positionX . " y" . positionY . " w" . GUI_MAX_WIDTH . " h20")
 
 OnMessage(0x200, PomoWmMouseMove)
 
-StartTimer()
+if (startTimerAtStartup) {
+    tray.Check("Start Timer at Startup")
+    IniWrite(true, "pomodoro-timer.ini", "General", "StartTimerAtStartup")
+    StartTimer()
+}
+
+TrayStartTimerAtStartupEvent(menuItemName, callbackOrSubmenu, options) {
+    tray.ToggleCheck("Start Timer at Startup")
+    IniWrite(!startTimerAtStartup, "pomodoro-timer.ini", "General", "StartTimerAtStartup")
+}
+
+TraySkippingBreakTimesEvent(menuItemName, callbackOrSubmenu, options) {
+    tray.Uncheck("Skipping 14 break times")
+    tray.Uncheck("Skipping 8 break times")
+    tray.Uncheck("Skipping 6 break times")
+    tray.Uncheck("Skipping 4 break times")
+    tray.Uncheck("Skipping 0 break times")
+    if (RegExMatch(menuItemName, "i)^Skipping ([0-9]+) break times$", &SubPat)) { ; User selected "Open" from the context menu.
+        tray.Check("Skipping " SubPat[1] " break times")
+        IniWrite(SubPat[1], "pomodoro-timer.ini", "General", "SkippingBreakTimes")
+        global skippingBreakTimes := SubPat[1] 
+    }
+}
 
 ; Start timer function
 StartTimer() {
@@ -106,7 +142,7 @@ TimerHandler() {
             pomodoroCount := pomodoroCount + 1
             WritePomodoroCount(pomodoroCount)
             ShowLabel(timeLeft, timerStatus, pomodoroCount)
-            if (MsgBox("To keep working?", "Pomodoro Timer Alert", 1) == "OK") {
+            if (pomodoroCount < skippingBreakTimes || MsgBox("To keep working?", "Pomodoro Timer Alert", 1) == "OK") {
                 currentTime := TIME_TO_FOCUS
                 timerStatus := "W"
             } else {
