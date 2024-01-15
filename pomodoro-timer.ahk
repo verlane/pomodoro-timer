@@ -44,7 +44,9 @@ tray.Add("Skipping 0 break times", TraySkippingBreakTimesEvent)
 tray.Check("Skipping " skippingBreakTimes " break times")
 
 ; GUI Settings
-TraySeticon(A_ScriptDir . "\pomodoro-timer.ico")
+if (!A_IsCompiled) {
+    TraySeticon(A_ScriptDir . "\pomodoro-timer.ico")
+}
 MyGui := Gui("-Caption -Border +ToolWindow +AlwaysOnTop", WINDOW_TITLE)
 MyGui.SetFont("s10", "Consolas")
 MyGui.OnEvent("Escape", (*) => StopTimer())
