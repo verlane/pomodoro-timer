@@ -1,6 +1,8 @@
-# Pomodoro Timer for AutoHotkey v2
+# Pomodoro Timer for Windows AutoHotkey v2
 
-<img src="https://github.com/verlane/pomodoro-timer/assets/3623209/732fb10d-84ad-4fab-a3c0-5f4b804ff621" height="20">
+<p align="center">
+  <img src="https://github.com/verlane/pomodoro-timer/assets/3623209/732fb10d-84ad-4fab-a3c0-5f4b804ff621" height="20">
+</p>
 
 * A very simple Pomodoro timer made with AutoHotkey v2.
 * A small timer clock that doesn't interfere with your work.
