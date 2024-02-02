@@ -12,12 +12,13 @@ FINISH_WORK_COUNT := 16
 TIME_TO_FOCUS := 25 * 60
 TIME_TO_REST := 5 * 60
 TIME_TO_STOP_AUTO := 1 * 60 * 1000 ; 1 min
-GUI_MIN_WIDTH := 64 
+GUI_MIN_WIDTH := 64
 GUI_MAX_WIDTH := 186
 
 positionX := GetIniValue("Position", "X", -1)
 positionY := GetIniValue("Position", "Y", -1)
 startTimerAtStartup := GetIniValue("General", "StartTimerAtStartup", true)
+autoStopWhenAway := GetIniValue("General", "AutoStopWhenAway", true)
 skipBreakTimes := GetIniValue("General", "SkipBreakTimes", 0)
 
 if (positionX < 0 || positionX > (A_ScreenWidth - 100)) {
@@ -34,20 +35,23 @@ elapsedTime := 0
 ; Tray Settings
 trayMenu := A_TrayMenu ; For convenience.
 trayMenu.Delete()
-trayMenu.Add("Start Timer", TrayStartOrStopEvent)
+trayMenu.Add("Start Timer", HandleStartOrStopOption)
 trayMenu.Add()
-trayMenu.Add("+1 Pomodoro", TrayAddPomodoroEvent)
-trayMenu.Add("-1 Pomodoro", TrayAddPomodoroEvent)
+trayMenu.Add("+1 Pomodoro", HandleAddPomodoroOption)
+trayMenu.Add("-1 Pomodoro", HandleAddPomodoroOption)
 trayMenu.Add()
-trayMenu.Add("Start Timer at Startup", TrayStartTimerAtStartupEvent)
+trayMenu.Add("Start Timer at Startup", HandleStartupTimerOption)
+trayMenu.Add("Auto-stop when away", HandleAutoStopOption)
 trayMenu.Add()
-trayMenu.Add("Skip 14 break times", TraySkipBreakTimesEvent)
-trayMenu.Add("Skip 12 break times", TraySkipBreakTimesEvent)
-trayMenu.Add("Skip 10 break times", TraySkipBreakTimesEvent)
-trayMenu.Add("Skip 8 break times", TraySkipBreakTimesEvent)
-trayMenu.Add("Skip 6 break times", TraySkipBreakTimesEvent)
-trayMenu.Add("Skip 4 break times", TraySkipBreakTimesEvent)
-trayMenu.Add("Skip 0 break times", TraySkipBreakTimesEvent)
+trayMenu.Add("Skip 16 break times", HandleSkipBreakTimesOption)
+trayMenu.Add("Skip 14 break times", HandleSkipBreakTimesOption)
+trayMenu.Add("Skip 12 break times", HandleSkipBreakTimesOption)
+trayMenu.Add("Skip 10 break times", HandleSkipBreakTimesOption)
+trayMenu.Add("Skip 8 break times", HandleSkipBreakTimesOption)
+trayMenu.Add("Skip 6 break times", HandleSkipBreakTimesOption)
+trayMenu.Add("Skip 4 break times", HandleSkipBreakTimesOption)
+trayMenu.Add("Skip 2 break times", HandleSkipBreakTimesOption)
+trayMenu.Add("Skip 0 break times", HandleSkipBreakTimesOption)
 trayMenu.Add()
 trayMenu.Add("Edit Settings File", (*) => Run("notepad.exe pomodoro-timer.ini"))
 trayMenu.Add()
@@ -92,7 +96,12 @@ if (startTimerAtStartup) {
     StartTimer()
 }
 
-TrayStartOrStopEvent(menuItemName, callbackOrSubmenu, options) {
+if (autoStopWhenAway) {
+    trayMenu.Check("Auto-stop when away")
+    IniWrite(true, "pomodoro-timer.ini", "General", "AutoStopWhenAway")
+}
+
+HandleStartOrStopOption(menuItemName, callbackOrSubmenu, options) {
     if (menuItemName == "Start Timer") {
         StartTimer()
     } else {
@@ -100,7 +109,7 @@ TrayStartOrStopEvent(menuItemName, callbackOrSubmenu, options) {
     }
 }
 
-TrayAddPomodoroEvent(menuItemName, callbackOrSubmenu, options) {
+HandleAddPomodoroOption(menuItemName, callbackOrSubmenu, options) {
     if (RegExMatch(menuItemName, "i)^([`+`-][0-9]+) Pomodoro$", &SubPat)) {
         global pomodoroCount := pomodoroCount + SubPat[1]
         TimerHandler()
@@ -108,12 +117,17 @@ TrayAddPomodoroEvent(menuItemName, callbackOrSubmenu, options) {
     }
 }
 
-TrayStartTimerAtStartupEvent(menuItemName, callbackOrSubmenu, options) {
+HandleStartupTimerOption(menuItemName, callbackOrSubmenu, options) {
     trayMenu.ToggleCheck("Start Timer at Startup")
     IniWrite(!startTimerAtStartup, "pomodoro-timer.ini", "General", "StartTimerAtStartup")
 }
 
-TraySkipBreakTimesEvent(menuItemName, callbackOrSubmenu, options) {
+HandleAutoStopOption(menuItemName, callbackOrSubmenu, options) {
+    trayMenu.ToggleCheck("Auto-stop when away")
+    IniWrite(!autoStopWhenAway, "pomodoro-timer.ini", "General", "AutoStopWhenAway")
+}
+
+HandleSkipBreakTimesOption(menuItemName, callbackOrSubmenu, options) {
     trayMenu.Uncheck("Skip 14 break times")
     trayMenu.Uncheck("Skip 12 break times")
     trayMenu.Uncheck("Skip 10 break times")
@@ -124,7 +138,7 @@ TraySkipBreakTimesEvent(menuItemName, callbackOrSubmenu, options) {
     if (RegExMatch(menuItemName, "i)^Skip ([0-9]+) break times$", &SubPat)) {
         trayMenu.Check("Skip " SubPat[1] " break times")
         IniWrite(SubPat[1], "pomodoro-timer.ini", "General", "SkipBreakTimes")
-        global skipBreakTimes := SubPat[1] 
+        global skipBreakTimes := SubPat[1]
     }
 }
 
