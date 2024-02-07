@@ -202,7 +202,7 @@ TimerHandler() {
             pomodoroCount := pomodoroCount + 1
             WritePomodoroCount(pomodoroCount)
             ShowLabel(timeLeft, timerStatus, pomodoroCount)
-            if (pomodoroCount < skipBreakTimes || MsgBox("To keep working?", "Pomodoro Timer Alert", 1) == "OK") {
+            if (pomodoroCount < skipBreakTimes || MsgBoxEx("To keep working?") == "Yes") {
                 currentTime := TIME_TO_FOCUS
                 timerStatus := "W"
             } else {
@@ -212,7 +212,7 @@ TimerHandler() {
         } else {
             SoundPlay A_ScriptDir . "\audio\Sound2.mp3"
             ShowLabel(timeLeft, timerStatus, pomodoroCount)
-            if (MsgBox("Start working?", "Pomodoro Timer Alert", 1) == "OK") {
+            if (MsgBoxEx("Start working?") == "Yes") {
                 currentTime := TIME_TO_FOCUS
                 timerStatus := "W"
             } else {
@@ -263,7 +263,8 @@ PomoWmMouseMove(wparam, lparam, msg, hwnd)
 {
     if (wparam = 1) { ; LButton
         winClass := WinGetClass("A")
-        if (winClass != "AutoHotkeyGUI") { ; is MsgBox?
+        winTitle := WinGetTitle("A")
+        if (winClass != "AutoHotkeyGUI" || winTitle == "Pomodoro Timer Alert") { ; is MsgBox?
             return
         }
         PostMessage 0xA1, 2, , , "A" ; WM_NCLBUTTONDOWN
@@ -298,4 +299,30 @@ SavePosition() {
 
 GetIniValue(section, key, defaultValue := "") {
     return IniRead("pomodoro-timer.ini", section, key, defaultValue)
+}
+
+MsgBoxEx(message) {
+    msgBoxGui := Gui("+AlwaysOnTop", "Pomodoro Timer Alert")
+    msgBoxGui.SetFont("s10", "Consolas")
+    msgBoxGui.Add("Text", "x0 y6 w250 h20 Center", message)
+    okButton := msgBoxGui.Add("Button", "x20 y36 w100 h30 Default", "&Yes")
+    cancelButton := msgBoxGui.Add("Button", "x130 y36 w100 h30", "&No")
+    msgBoxGui.Show("w250 h80 NoActivate")
+
+    result := ""
+    msgBoxGui.OnEvent("Close", (*) => SetMsgBoxExResult("No", &result, msgBoxGui))
+    okButton.OnEvent("Click", (*) => SetMsgBoxExResult("Yes", &result, msgBoxGui))
+    cancelButton.OnEvent("Click", (*) => SetMsgBoxExResult("No", &result, msgBoxGui))
+    msgBoxGui.OnEvent("Escape", (*) => SetMsgBoxExResult("No", &result, msgBoxGui))
+
+    While (result == "") {
+        Sleep(100)
+    }
+
+    return result
+}
+
+SetMsgBoxExResult(value, &result, msgBoxGui) {
+    result := value
+    msgBoxGui.Destroy()
 }
