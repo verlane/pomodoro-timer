@@ -56,8 +56,8 @@ trayMenu.Add()
 trayMenu.Add("Edit Settings File", (*) => Run("notepad.exe pomodoro-timer.ini"))
 trayMenu.Add()
 trayMenu.Add("About", (*) => MsgBox("verlane/pomodoro-timer v0.0.2"))
-trayMenu.Add("Reload", (*) => Reload())
-trayMenu.Add("Exit", (*) => ExitApp())
+trayMenu.Add("&Reload", (*) => Reload())
+trayMenu.Add("E&xit", (*) => ExitApp())
 
 trayMenu.Check("Skip " skipBreakTimes " break times")
 
