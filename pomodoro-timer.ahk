@@ -173,6 +173,7 @@ StopTimer() {
 ; Timer handler function
 TimerHandler() {
     global
+    MyGui.Opt("+AlwaysOnTop")
     if (timerStatus == "W" && A_TimeIdlePhysical >= TIME_TO_STOP_AUTO) {
         MyGui.BackColor := 0x555555
         ElapsedTimeText.Opt("+cWhite")
