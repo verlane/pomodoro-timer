@@ -147,7 +147,7 @@ StartTimer() {
     global
     if (elapsedTime <= 0) {
         currentTime := TIME_TO_FOCUS
-        timerStatus := "W"
+        timerStatus := "F"
         elapsedTime := 0
     }
     try {
@@ -174,14 +174,14 @@ StopTimer() {
 TimerHandler() {
     global
     MyGui.Opt("+AlwaysOnTop")
-    if (timerStatus == "W" && A_TimeIdlePhysical >= TIME_TO_STOP_AUTO) {
+    if (timerStatus == "F" && A_TimeIdlePhysical >= TIME_TO_STOP_AUTO) {
         MyGui.BackColor := 0x555555
         ElapsedTimeText.Opt("+cWhite")
         Return
     }
 
     ElapsedTimeText.Opt("+c" . GetDefaultGuiColor(8))
-    if (timerStatus == "W") {
+    if (timerStatus == "F") {
         MyGui.BackColor := 0xFFFFFF
     } else {
         MyGui.BackColor := 0xFACF2C ; yellow
@@ -198,14 +198,14 @@ TimerHandler() {
 
     if (timeLeft < 1) {
         elapsedTime := 0
-        if (timerStatus == "W") {
+        if (timerStatus == "F") {
             SoundPlay A_ScriptDir . "\audio\Sound1.mp3"
             pomodoroCount := pomodoroCount + 1
             WritePomodoroCount(pomodoroCount)
             ShowLabel(timeLeft, timerStatus, pomodoroCount)
             if (pomodoroCount < skipBreakTimes || MsgBoxEx("To keep working?") == "Yes") {
                 currentTime := TIME_TO_FOCUS
-                timerStatus := "W"
+                timerStatus := "F"
             } else {
                 currentTime := TIME_TO_REST
                 timerStatus := "B"
@@ -215,7 +215,7 @@ TimerHandler() {
             ShowLabel(timeLeft, timerStatus, pomodoroCount)
             if (MsgBoxEx("Start working?") == "Yes") {
                 currentTime := TIME_TO_FOCUS
-                timerStatus := "W"
+                timerStatus := "F"
             } else {
                 currentTime := TIME_TO_REST
                 timerStatus := "B"
