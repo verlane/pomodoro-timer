@@ -16,7 +16,7 @@ Class Setting {
     this.settingGui.Title := "Pomodoro Timer Settings"
 
     ; Top section
-    this.settingGui.Add("Text", "x10 y10 w380 h30", "Click buttons to edit items to the list below:")
+    this.settingGui.Add("Text", "x10 y10 w350 h30", "Click buttons to edit items to the list below:")
     this.focusBtn := this.settingGui.Add("Button", "x10 y40 w80 h30", "&Focus")
     this.focusBtn.OnEvent("Click", (*) => this.AddTimer("F"))
     this.breakBtn := this.settingGui.Add("Button", "x100 y40 w80 h30", "&Break")
@@ -27,12 +27,12 @@ Class Setting {
     this.deleteBtn.OnEvent("Click", (*) => this.DeleteItem())
 
     ; Bottom section
-    this.timerDetailLV := this.settingGui.Add("ListView", "x10 y80 w380 h200 +Multi NoSortHdr", ["Order", "Type", "Time (min)"])
+    this.timerDetailLV := this.settingGui.Add("ListView", "x10 y80 w350 h200 +Multi NoSortHdr", ["Order", "Type", "Time (min)"])
     this.timerDetailLV.OnEvent("DoubleClick", ObjBindMethod(this, "EditTime"))
     this.timerDetailLV.OnEvent("ItemFocus", ObjBindMethod(this, "UpdateButtonStates"))
     this.timerDetailLV.OnNotify(-4, ObjBindMethod(this, "KeyHandler"))
     LV_TV_WantReturnSC.Register(this.timerDetailLV) ; register the LV
-    this.timerDetailLV.ModifyCol(1, "50 Right")  ; Order column
+    this.timerDetailLV.ModifyCol(1, "50 Center")  ; Order column
     this.timerDetailLV.ModifyCol(2, "180")       ; Type column
     this.timerDetailLV.ModifyCol(3, "100 Right") ; Time column
 
@@ -46,14 +46,16 @@ Class Setting {
     contextMenu.Add("Delete Item", ObjBindMethod(this, "DeleteItem"))
     this.timerDetailLV.OnEvent("ContextMenu", (*) => contextMenu.Show())
 
+    this.startTimerAtStartupChk := this.settingGui.Add("Checkbox", "x10 y285 w180 h30", "Start Timer At Startup")
+    this.autoStopWhenAwayChk := this.settingGui.Add("Checkbox", "x200 y285 w160 h30", "Auto Stop When Away")
+
     ; Buttons
-    this.resetBtn := this.settingGui.Add("Button", "x10 y290 w80 h30", "&Reset")
+    this.resetBtn := this.settingGui.Add("Button", "x10 y320 w80 h30", "&Reset")
     this.resetBtn.OnEvent("Click", ObjBindMethod(this, "ResetSettings"))
 
-    this.saveBtn := this.settingGui.Add("Button", "x100 y290 w80 h30 Default", "&Save")
+    this.saveBtn := this.settingGui.Add("Button", "x100 y320 w80 h30 Default", "&Save")
     this.saveBtn.OnEvent("Click", ObjBindMethod(this, "SaveSettings"))
 
-    ; GUI display
     this.LoadSettings()
   }
 
@@ -199,26 +201,33 @@ Class Setting {
 
   ; Save settings function
   SaveSettings(*) {
-    elements := []
+    timers := []
     Loop this.timerDetailLV.GetCount() {
-      elements.Push(this.timerDetailLV.GetText(A_Index, 2) . "," . this.timerDetailLV.GetText(A_Index, 3))
+      timers.Push(this.timerDetailLV.GetText(A_Index, 2) . "," . this.timerDetailLV.GetText(A_Index, 3))
     }
-    IniWrite(this.StrJoin(elements, "|"), iniFile, "Settings", "Elements")
+    IniWrite(this.StrJoin(timers, "|"), iniFile, "General", "Timers")
+    IniWrite(this.startTimerAtStartupChk.Value, iniFile, "General", "StartTimerAtStartup")
+    IniWrite(this.autoStopWhenAwayChk.Value, iniFile, "General", "AutoStopWhenAway")
     MsgBox("Settings have been saved.")
   }
 
   ; Load settings function
   LoadSettings() {
     if (FileExist(iniFile)) {
-      elements := StrSplit(IniRead(iniFile, "Settings", "Elements", ""), "|")
-      for element in elements {
-        parts := StrSplit(element, ",")
+      timers := StrSplit(IniRead(iniFile, "General", "Timers", ""), "|")
+      for timer in timers {
+        parts := StrSplit(timer, ",")
         if (parts.Length == 2) {
           if (parts[1] == "Focus Time")
             this.timerDetailLV.Add(, "", parts[1], parts[2])
           else
             this.timerDetailLV.Add(, "", parts[1], parts[2])
         }
+      }
+
+      if (timers.Length == 0) {
+        this.ResetSettings()
+        this.SaveSettings()
       }
       this.UpdateOrder()
     }
@@ -231,15 +240,17 @@ Class Setting {
       this.timerDetailLV.Add(, A_Index, "Focus Time", "25")
       this.timerDetailLV.Add(, "", "Break Time", "5")
     }
+    this.startTimerAtStartupChk.Value := 1
+    this.autoStopWhenAwayChk.Value := 1
   }
 
   ; String join function
   StrJoin(arr, delimiter) {
     result := ""
-    for index, element in arr {
+    for index, timer in arr {
       if (index > 1)
         result .= delimiter
-      result .= element
+      result .= timer
     }
     return result
   }
