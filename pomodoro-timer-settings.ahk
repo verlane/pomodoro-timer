@@ -2,243 +2,253 @@
 #SingleInstance Force
 
 ; Global variables
-global timerElements := []
 global iniFile := A_ScriptDir "\pomodoro-timer.ini"
 
-; GUI creation
-settingGui := Gui()
-settingGui.SetFont("s10", "Consolas")
-settingGui.OnEvent("Close", (*) => ExitApp())
-settingGui.Title := "Pomodoro Timer Settings"
-
-; Top section
-settingGui.Add("Text", "x10 y10 w380 h30", "Click buttons to edit items to the list below:")
-focusBtn := settingGui.Add("Button", "x10 y40 w80 h30", "&Focus")
-focusBtn.OnEvent("Click", (*) => AddTimer("F"))
-breakBtn := settingGui.Add("Button", "x100 y40 w80 h30", "&Break")
-breakBtn.OnEvent("Click", (*) => AddTimer("B"))
-editBtn := settingGui.Add("Button", "x190 y40 w80 h30", "&Edit")
-editBtn.OnEvent("Click", EditTimeMenu)
-deleteBtn := settingGui.Add("Button", "x280 y40 w80 h30", "&Delete")
-deleteBtn.OnEvent("Click", DeleteItem)
-
-; Bottom section
-timerDetailLV := settingGui.Add("ListView", "x10 y80 w380 h200 +Multi NoSortHdr", ["Order", "Type", "Time (min)"])
-timerDetailLV.OnEvent("DoubleClick", EditTime)
-timerDetailLV.OnEvent("ItemFocus", UpdateButtonStates)
-timerDetailLV.OnNotify(-4, KeyHandler)
-LV_TV_WantReturnSC.Register(timerDetailLV) ; register the LV
-timerDetailLV.ModifyCol(1, "50 Right")  ; Order column
-timerDetailLV.ModifyCol(2, "180")       ; Type column
-timerDetailLV.ModifyCol(3, "100 Right") ; Time column
-
-LVN_FIRST := 0 - 100
-LVN_KEYDOWN := LVN_FIRST - 55
-timerDetailLV.OnNotify(LVN_KEYDOWN, LV_OnKeyDown)
-LV_OnKeyDown(timerDetailLV, lParam) {
-  NMHDR_hwndFrom := NumGet(lParam, 0, 'Ptr')
-  NMHDR_idFrom := NumGet(lParam, A_PtrSize, 'UInt')
-  NMHDR_code := NumGet(lParam, 2 * A_PtrSize, 'UInt')
-  LVKEYDOWN_wVKey := NumGet(lParam, 3 * A_PtrSize, 'UShort')
-  ; LVKEYDOWN_flags ; is always 0
-  if (LVKEYDOWN_wVKey == 46) { ; Del key
-    DeleteItem()
-  }
-}
-
-; Context menu
-contextMenu := Menu()
-contextMenu.Add("Edit Time", EditTimeMenu)
-contextMenu.Add("Delete Item", DeleteItem)
-timerDetailLV.OnEvent("ContextMenu", (*) => contextMenu.Show())
-
-; Buttons
-resetBtn := settingGui.Add("Button", "x10 y290 w80 h30", "&Reset")
-resetBtn.OnEvent("Click", ResetSettings)
-
-saveBtn := settingGui.Add("Button", "x100 y290 w80 h30 Default", "&Save")
-saveBtn.OnEvent("Click", SaveSettings)
-
-; GUI display
-LoadSettings()
+settingGui := Setting()
 settingGui.Show()
 
-; Add Timer function
-AddTimer(type) {
-  focusCount := 0
-  selectedRow := timerDetailLV.GetNext(0, "Focused")
+Class Setting {
+  __New() {
+    ; GUI creation
+    this.settingGui := Gui()
+    this.settingGui.SetFont("s10", "Consolas")
+    this.settingGui.OnEvent("Close", (*) => ExitApp())
+    this.settingGui.Title := "Pomodoro Timer Settings"
 
-  Loop timerDetailLV.GetCount()
-    if (timerDetailLV.GetText(A_Index, 2) == "Focus Time")
-      focusCount++
+    ; Top section
+    this.settingGui.Add("Text", "x10 y10 w380 h30", "Click buttons to edit items to the list below:")
+    this.focusBtn := this.settingGui.Add("Button", "x10 y40 w80 h30", "&Focus")
+    this.focusBtn.OnEvent("Click", (*) => this.AddTimer("F"))
+    this.breakBtn := this.settingGui.Add("Button", "x100 y40 w80 h30", "&Break")
+    this.breakBtn.OnEvent("Click", (*) => this.AddTimer("B"))
+    this.editBtn := this.settingGui.Add("Button", "x190 y40 w80 h30", "&Edit")
+    this.editBtn.OnEvent("Click", (*) => this.EditTimeMenu())
+    this.deleteBtn := this.settingGui.Add("Button", "x280 y40 w80 h30", "&Delete")
+    this.deleteBtn.OnEvent("Click", (*) => this.DeleteItem())
 
-  if (type == "F") {
-    newRow := selectedRow ? selectedRow + 1 : timerDetailLV.GetCount() + 1
-    timerDetailLV.Insert(newRow, , focusCount + 1, "Focus Time", "25")
-  } else {
-    newRow := selectedRow ? selectedRow + 1 : timerDetailLV.GetCount() + 1
-    timerDetailLV.Insert(newRow, , "", "Break Time", "5")
+    ; Bottom section
+    this.timerDetailLV := this.settingGui.Add("ListView", "x10 y80 w380 h200 +Multi NoSortHdr", ["Order", "Type", "Time (min)"])
+    this.timerDetailLV.OnEvent("DoubleClick", ObjBindMethod(this, "EditTime"))
+    this.timerDetailLV.OnEvent("ItemFocus", ObjBindMethod(this, "UpdateButtonStates"))
+    this.timerDetailLV.OnNotify(-4, ObjBindMethod(this, "KeyHandler"))
+    LV_TV_WantReturnSC.Register(this.timerDetailLV) ; register the LV
+    this.timerDetailLV.ModifyCol(1, "50 Right")  ; Order column
+    this.timerDetailLV.ModifyCol(2, "180")       ; Type column
+    this.timerDetailLV.ModifyCol(3, "100 Right") ; Time column
+
+    LVN_FIRST := 0 - 100
+    LVN_KEYDOWN := LVN_FIRST - 55
+    this.timerDetailLV.OnNotify(LVN_KEYDOWN, ObjBindMethod(this, "LV_OnKeyDown"))
+
+    ; Context menu
+    contextMenu := Menu()
+    contextMenu.Add("Edit Time", ObjBindMethod(this, "EditTimeMenu"))
+    contextMenu.Add("Delete Item", ObjBindMethod(this, "DeleteItem"))
+    this.timerDetailLV.OnEvent("ContextMenu", (*) => contextMenu.Show())
+
+    ; Buttons
+    this.resetBtn := this.settingGui.Add("Button", "x10 y290 w80 h30", "&Reset")
+    this.resetBtn.OnEvent("Click", ObjBindMethod(this, "ResetSettings"))
+
+    this.saveBtn := this.settingGui.Add("Button", "x100 y290 w80 h30 Default", "&Save")
+    this.saveBtn.OnEvent("Click", ObjBindMethod(this, "SaveSettings"))
+
+    ; GUI display
+    this.LoadSettings()
   }
 
-  UpdateOrder()
-}
+  Show() {
+    this.settingGui.Show()
+  }
 
-; Update order function
-UpdateOrder() {
-  focusCount := 0
-  Loop timerDetailLV.GetCount() {
-    if (timerDetailLV.GetText(A_Index, 2) == "Focus Time") {
-      focusCount++
-      timerDetailLV.Modify(A_Index, , focusCount)
+  LV_OnKeyDown(timerDetailLV, lParam) {
+    NMHDR_hwndFrom := NumGet(lParam, 0, 'Ptr')
+    NMHDR_idFrom := NumGet(lParam, A_PtrSize, 'UInt')
+    NMHDR_code := NumGet(lParam, 2 * A_PtrSize, 'UInt')
+    LVKEYDOWN_wVKey := NumGet(lParam, 3 * A_PtrSize, 'UShort')
+    ; LVKEYDOWN_flags ; is always 0
+    if (LVKEYDOWN_wVKey == 46) { ; Del key
+      this.DeleteItem()
+    }
+  }
+
+  ; Add Timer function
+  AddTimer(type) {
+    focusCount := 0
+    selectedRow := this.timerDetailLV.GetNext(0, "Focused")
+
+    Loop this.timerDetailLV.GetCount()
+      if (this.timerDetailLV.GetText(A_Index, 2) == "Focus Time")
+        focusCount++
+
+    if (type == "F") {
+      newRow := selectedRow ? selectedRow + 1 : this.timerDetailLV.GetCount() + 1
+      this.timerDetailLV.Insert(newRow, , focusCount + 1, "Focus Time", "25")
     } else {
-      timerDetailLV.Modify(A_Index, , "")
+      newRow := selectedRow ? selectedRow + 1 : this.timerDetailLV.GetCount() + 1
+      this.timerDetailLV.Insert(newRow, , "", "Break Time", "5")
     }
-  }
-}
 
-; 키 입력 이벤트 처리 함수
-KeyHandler(*) {
-  ; Enter 키가 눌렸을 때 현재 선택된 항목에 대해 시간 수정 호출
-  focusedRow := timerDetailLV.GetNext(0, "Focused")
-  if (focusedRow > 0) {
-    EditTime(timerDetailLV, focusedRow)
-  }
-}
-
-; Edit time function
-EditTime(LV, RowNumber) {
-  if (RowNumber > 0) {
-    currentTime := LV.GetText(RowNumber, 3)
-    newTime := InputBox("Enter new time (minutes):", "Edit Time", , currentTime)
-    if (newTime.Result == "OK" && IsNumber(newTime.Value) && newTime.Value > 0) {
-      LV.Modify(RowNumber, , , , newTime.Value)
-    }
-  }
-}
-
-; Context menu - Edit time
-EditTimeMenu(*) {
-  if (timerDetailLV.GetNext(0, "Focused") > 0)
-    EditTime(timerDetailLV, timerDetailLV.GetNext(0, "Focused"))
-}
-
-; Context menu - Delete item
-DeleteItem(*) {
-  selectedRows := []
-  row := 0
-
-  while (row := timerDetailLV.GetNext(row)) {
-    if (!row) {
-      break
-    }
-    selectedRows.InsertAt(1, row)
+    this.UpdateOrder()
   }
 
-  for row in selectedRows {
-    timerDetailLV.Delete(row)
-    timerDetailLV.Modify(row, "Select")
-  }
-
-  UpdateOrder()
-}
-
-; Key input handling
-HandleKeyPress(ThisHotkey, *) {
-  switch ThisHotkey.Hotkey {
-    case "Delete":
-      DeleteItem()
-    case "Enter":
-      EditTimeMenu()
-  }
-}
-
-; Move selected items
-MoveSelectedItems(direction) {
-  selectedRows := []
-  row := 0
-  while (row := timerDetailLV.GetNext(row, "Focused"))
-    selectedRows.Push(row)
-
-  if (direction == -1)
-    selectedRows.Sort((a, b) => a - b)
-  else
-    selectedRows.Sort((a, b) => b - a)
-
-  for currentRow in selectedRows {
-    targetRow := currentRow + direction
-    if (targetRow > 0 && targetRow <= timerDetailLV.GetCount()) {
-      SwapRows(currentRow, targetRow)
-    }
-  }
-
-  UpdateOrder()
-}
-
-; Swap rows
-SwapRows(row1, row2) {
-  data1 := [timerDetailLV.GetText(row1, 1), timerDetailLV.GetText(row1, 2), timerDetailLV.GetText(row1, 3)]
-  data2 := [timerDetailLV.GetText(row2, 1), timerDetailLV.GetText(row2, 2), timerDetailLV.GetText(row2, 3)]
-
-  timerDetailLV.Modify(row1, , data2[1], data2[2], data2[3])
-  timerDetailLV.Modify(row2, , data1[1], data1[2], data1[3])
-
-  if (timerDetailLV.GetNext(row1, "Focused"))
-    timerDetailLV.Modify(row2, "Select Focus")
-  else if (timerDetailLV.GetNext(row2, "Focused"))
-    timerDetailLV.Modify(row1, "Select Focus")
-}
-
-; Save settings function
-SaveSettings(*) {
-  elements := []
-  Loop timerDetailLV.GetCount() {
-    elements.Push(timerDetailLV.GetText(A_Index, 2) . "," . timerDetailLV.GetText(A_Index, 3))
-  }
-  IniWrite(StrJoin(elements, "|"), iniFile, "Settings", "Elements")
-  MsgBox("Settings have been saved.")
-}
-
-; Load settings function
-LoadSettings() {
-  if (FileExist(iniFile)) {
-    elements := StrSplit(IniRead(iniFile, "Settings", "Elements", ""), "|")
-    for element in elements {
-      parts := StrSplit(element, ",")
-      if (parts.Length == 2) {
-        if (parts[1] == "Focus Time")
-          timerDetailLV.Add(, "", parts[1], parts[2])
-        else
-          timerDetailLV.Add(, "", parts[1], parts[2])
+  ; Update order function
+  UpdateOrder() {
+    focusCount := 0
+    Loop this.timerDetailLV.GetCount() {
+      if (this.timerDetailLV.GetText(A_Index, 2) == "Focus Time") {
+        focusCount++
+        this.timerDetailLV.Modify(A_Index, , focusCount)
+      } else {
+        this.timerDetailLV.Modify(A_Index, , "")
       }
     }
-    UpdateOrder()
   }
-}
 
-; Reset settings function
-ResetSettings(*) {
-  timerDetailLV.Delete()
-  Loop 16 {
-    timerDetailLV.Add(, A_Index, "Focus Time", "25")
-    timerDetailLV.Add(, "", "Break Time", "5")
+  ; 키 입력 이벤트 처리 함수
+  KeyHandler(*) {
+    ; Enter 키가 눌렸을 때 현재 선택된 항목에 대해 시간 수정 호출
+    focusedRow := this.timerDetailLV.GetNext(0, "Focused")
+    if (focusedRow > 0) {
+      this.EditTime(this.timerDetailLV, focusedRow)
+    }
   }
-}
 
-; String join function
-StrJoin(arr, delimiter) {
-  result := ""
-  for index, element in arr {
-    if (index > 1)
-      result .= delimiter
-    result .= element
+  ; Edit time function
+  EditTime(LV, RowNumber) {
+    if (RowNumber > 0) {
+      currentTime := LV.GetText(RowNumber, 3)
+      newTime := InputBox("Enter new time (minutes):", "Edit Time", , currentTime)
+      if (newTime.Result == "OK" && IsNumber(newTime.Value) && newTime.Value > 0) {
+        LV.Modify(RowNumber, , , , newTime.Value)
+      }
+    }
   }
-  return result
-}
 
-; Update button states
-UpdateButtonStates(*) {
-  saveBtn.Enabled := (timerDetailLV.GetCount() > 0)
-  resetBtn.Enabled := true
+  ; Context menu - Edit time
+  EditTimeMenu(*) {
+    if (this.timerDetailLV.GetNext(0, "Focused") > 0)
+      this.EditTime(this.timerDetailLV, this.timerDetailLV.GetNext(0, "Focused"))
+  }
+
+  ; Context menu - Delete item
+  DeleteItem(*) {
+    selectedRows := []
+    row := 0
+
+    while (row := this.timerDetailLV.GetNext(row)) {
+      if (!row) {
+        break
+      }
+      selectedRows.InsertAt(1, row)
+    }
+
+    for row in selectedRows {
+      this.timerDetailLV.Delete(row)
+      this.timerDetailLV.Modify(row, "Select")
+    }
+
+    this.UpdateOrder()
+  }
+
+  ; Key input handling
+  HandleKeyPress(ThisHotkey, *) {
+    switch ThisHotkey.Hotkey {
+      case "Delete":
+        this.DeleteItem()
+      case "Enter":
+        this.EditTimeMenu()
+    }
+  }
+
+  ; Move selected items
+  MoveSelectedItems(direction) {
+    selectedRows := []
+    row := 0
+    while (row := this.timerDetailLV.GetNext(row, "Focused"))
+      selectedRows.Push(row)
+
+    if (direction == -1)
+      selectedRows.Sort((a, b) => a - b)
+    else
+      selectedRows.Sort((a, b) => b - a)
+
+    for currentRow in selectedRows {
+      targetRow := currentRow + direction
+      if (targetRow > 0 && targetRow <= this.timerDetailLV.GetCount()) {
+        this.SwapRows(currentRow, targetRow)
+      }
+    }
+
+    this.UpdateOrder()
+  }
+
+  ; Swap rows
+  SwapRows(row1, row2) {
+    data1 := [this.timerDetailLV.GetText(row1, 1), this.timerDetailLV.GetText(row1, 2), this.timerDetailLV.GetText(row1, 3)]
+    data2 := [this.timerDetailLV.GetText(row2, 1), this.timerDetailLV.GetText(row2, 2), this.timerDetailLV.GetText(row2, 3)]
+
+    this.timerDetailLV.Modify(row1, , data2[1], data2[2], data2[3])
+    this.timerDetailLV.Modify(row2, , data1[1], data1[2], data1[3])
+
+    if (this.timerDetailLV.GetNext(row1, "Focused"))
+      this.timerDetailLV.Modify(row2, "Select Focus")
+    else if (this.timerDetailLV.GetNext(row2, "Focused"))
+      this.timerDetailLV.Modify(row1, "Select Focus")
+  }
+
+  ; Save settings function
+  SaveSettings(*) {
+    elements := []
+    Loop this.timerDetailLV.GetCount() {
+      elements.Push(this.timerDetailLV.GetText(A_Index, 2) . "," . this.timerDetailLV.GetText(A_Index, 3))
+    }
+    IniWrite(this.StrJoin(elements, "|"), iniFile, "Settings", "Elements")
+    MsgBox("Settings have been saved.")
+  }
+
+  ; Load settings function
+  LoadSettings() {
+    if (FileExist(iniFile)) {
+      elements := StrSplit(IniRead(iniFile, "Settings", "Elements", ""), "|")
+      for element in elements {
+        parts := StrSplit(element, ",")
+        if (parts.Length == 2) {
+          if (parts[1] == "Focus Time")
+            this.timerDetailLV.Add(, "", parts[1], parts[2])
+          else
+            this.timerDetailLV.Add(, "", parts[1], parts[2])
+        }
+      }
+      this.UpdateOrder()
+    }
+  }
+
+  ; Reset settings function
+  ResetSettings(*) {
+    this.timerDetailLV.Delete()
+    Loop 16 {
+      this.timerDetailLV.Add(, A_Index, "Focus Time", "25")
+      this.timerDetailLV.Add(, "", "Break Time", "5")
+    }
+  }
+
+  ; String join function
+  StrJoin(arr, delimiter) {
+    result := ""
+    for index, element in arr {
+      if (index > 1)
+        result .= delimiter
+      result .= element
+    }
+    return result
+  }
+
+  ; Update button states
+  UpdateButtonStates(*) {
+    this.saveBtn.Enabled := (this.timerDetailLV.GetCount() > 0)
+    this.resetBtn.Enabled := true
+  }
 }
 
 ; ======================================================================================================================
