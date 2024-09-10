@@ -1,35 +1,34 @@
-#Requires AutoHotkey v2.0
-#SingleInstance Force
+Class ClassSetting {
+  ; SECS := 60
+  SECS := 2
 
-; Global variables
-global iniFile := A_ScriptDir "\pomodoro-timer.ini"
+  __New(main) {
+    this.timers := []
+    this.main := main
+    this.mainGui := main.mainGui
+    this.iniFile := main.INI_FILE
 
-settingGui := Setting()
-settingGui.Show()
-
-Class Setting {
-  __New() {
     ; GUI creation
     this.settingGui := Gui()
     this.settingGui.SetFont("s10", "Consolas")
-    this.settingGui.OnEvent("Close", (*) => ExitApp())
     this.settingGui.Title := "Pomodoro Timer Settings"
+
+    this.settingGui.OnEvent("Close", (*) => this.OnClose())
 
     ; Top section
     this.settingGui.Add("Text", "x10 y10 w350 h30", "Click buttons to edit items to the list below:")
-    this.focusBtn := this.settingGui.Add("Button", "x10 y40 w80 h30", "&Focus")
-    this.focusBtn.OnEvent("Click", (*) => this.AddTimer("F"))
-    this.breakBtn := this.settingGui.Add("Button", "x100 y40 w80 h30", "&Break")
-    this.breakBtn.OnEvent("Click", (*) => this.AddTimer("B"))
-    this.editBtn := this.settingGui.Add("Button", "x190 y40 w80 h30", "&Edit")
-    this.editBtn.OnEvent("Click", (*) => this.EditTimeMenu())
-    this.deleteBtn := this.settingGui.Add("Button", "x280 y40 w80 h30", "&Delete")
-    this.deleteBtn.OnEvent("Click", (*) => this.DeleteItem())
+    focusBtn := this.settingGui.Add("Button", "x10 y40 w80 h30", "&Focus")
+    focusBtn.OnEvent("Click", (*) => this.AddTimer("F"))
+    breakBtn := this.settingGui.Add("Button", "x100 y40 w80 h30", "&Break")
+    breakBtn.OnEvent("Click", (*) => this.AddTimer("B"))
+    editBtn := this.settingGui.Add("Button", "x190 y40 w80 h30", "&Edit")
+    editBtn.OnEvent("Click", (*) => this.EditTimeMenu())
+    deleteBtn := this.settingGui.Add("Button", "x280 y40 w80 h30", "&Delete")
+    deleteBtn.OnEvent("Click", (*) => this.DeleteItem())
 
     ; Bottom section
     this.timerDetailLV := this.settingGui.Add("ListView", "x10 y80 w350 h200 +Multi NoSortHdr", ["Order", "Type", "Time (min)"])
     this.timerDetailLV.OnEvent("DoubleClick", ObjBindMethod(this, "EditTime"))
-    this.timerDetailLV.OnEvent("ItemFocus", ObjBindMethod(this, "UpdateButtonStates"))
     this.timerDetailLV.OnNotify(-4, ObjBindMethod(this, "KeyHandler"))
     LV_TV_WantReturnSC.Register(this.timerDetailLV) ; register the LV
     this.timerDetailLV.ModifyCol(1, "50 Center")  ; Order column
@@ -50,17 +49,119 @@ Class Setting {
     this.autoStopWhenAwayChk := this.settingGui.Add("Checkbox", "x200 y285 w160 h30", "Auto Stop When Away")
 
     ; Buttons
-    this.resetBtn := this.settingGui.Add("Button", "x10 y320 w80 h30", "&Reset")
-    this.resetBtn.OnEvent("Click", ObjBindMethod(this, "ResetSettings"))
+    resetBtn := this.settingGui.Add("Button", "x10 y320 w80 h30", "&Reset")
+    resetBtn.OnEvent("Click", ObjBindMethod(this, "ResetSettings"))
 
-    this.saveBtn := this.settingGui.Add("Button", "x100 y320 w80 h30 Default", "&Save")
-    this.saveBtn.OnEvent("Click", ObjBindMethod(this, "SaveSettings"))
+    saveBtn := this.settingGui.Add("Button", "x100 y320 w80 h30 Default", "&Save")
+    saveBtn.OnEvent("Click", ObjBindMethod(this, "SaveSettings"))
 
     this.LoadSettings()
+    this.LoadTimers()
+  }
+
+  GetLvLastOrder() {
+    count := this.timerDetailLV.GetCount()
+    Loop count {
+      rowIndex := count - A_Index + 1
+      if (this.__GetLvType(A_Index) == "F") {
+        return this.timerDetailLV.GetText(rowIndex, 1)
+      }
+    }
+    return 1
+  }
+
+  LoadTimers() {
+    this.timers := []
+
+    prevTotalElapsedTimeSec := 1
+    totalElapsedTimeSec := 1
+
+    count := this.timerDetailLV.GetCount()
+    Loop count {
+      timeSec := this.__GetLvTimeSec(A_Index) * this.SECS
+      if (this.__GetLvType(A_Index) == "F") {
+        totalElapsedTimeSec += timeSec
+      }
+    }
+
+    prevTimer := false
+    Loop count {
+      timeSec := this.__GetLvTimeSec(A_Index) * this.SECS
+      if (this.__GetLvType(A_Index) == "F") {
+        prevTotalElapsedTimeSec += timeSec
+      }
+
+      currentTimer := ClassTimer(A_Index, this.__GetLvOrder(A_Index), this.__GetLvType(A_Index), this.__GetLvTimeSec(A_Index), prevTotalElapsedTimeSec, totalElapsedTimeSec, prevTimer)
+      if (prevTimer) {
+        prevTimer.nextTimer := currentTimer
+      }
+
+      this.timers.Push(currentTimer)
+      prevTimer := currentTimer
+    }
+
+    ; if (1 < this.timers.Length) {
+    ;   this.timers[this.timers.Length].nextTimer := this.GetNextFocusingTimerByPomodoroCount(this.timers.Length)
+    ; }
+  }
+
+  GetNextFocusingTimerByPomodoroCount(pomodoroCount) {
+    lastFocusingTimer := false
+
+    for timer in this.timers {
+      if (timer.order) {
+        lastFocusingTimer := timer
+        if (pomodoroCount < timer.order) {
+          return timer
+        }
+      }
+    }
+    if (lastFocusingTimer) {
+      return lastFocusingTimer
+    }
+
+    return timer[timer.Length]
+  }
+
+  GetTimer(timersArrayIndex) {
+    if (timersArrayIndex > this.timers.Length) {
+      return false
+    }
+    return this.timers[timersArrayIndex]
+  }
+
+  __GetLvOrder(rowIndex) {
+    return this.__GetLvText(rowIndex, 1)
+  }
+
+  __GetLvType(rowIndex) {
+    if (this.__GetLvText(rowIndex, 2) == "Focus Time") {
+      return "F"
+    }
+    return "B"
+  }
+
+  __GetLvTimeSec(rowIndex) {
+    return this.__GetLvText(rowIndex, 3) * this.SECS
+  }
+
+  __GetLvText(rowIndex, colIndex) {
+    if (rowIndex > this.timerDetailLV.GetCount()) {
+      rowIndex := this.timerDetailLV.GetCount()
+    }
+    return this.timerDetailLV.GetText(rowIndex, colIndex)
   }
 
   Show() {
+    this.mainGui.Opt("+Disabled")  ; 부모 GUI 비활성화
+    this.LoadSettings()
     this.settingGui.Show()
+  }
+
+  OnClose() {
+    this.settingGui.Hide()
+    this.mainGui.Opt("-Disabled")
+    this.main.OnSettingGuiClosed()
   }
 
   LV_OnKeyDown(timerDetailLV, lParam) {
@@ -205,32 +306,34 @@ Class Setting {
     Loop this.timerDetailLV.GetCount() {
       timers.Push(this.timerDetailLV.GetText(A_Index, 2) . "," . this.timerDetailLV.GetText(A_Index, 3))
     }
-    IniWrite(this.StrJoin(timers, "|"), iniFile, "General", "Timers")
-    IniWrite(this.startTimerAtStartupChk.Value, iniFile, "General", "StartTimerAtStartup")
-    IniWrite(this.autoStopWhenAwayChk.Value, iniFile, "General", "AutoStopWhenAway")
+    IniWrite(this.StrJoin(timers, "|"), this.iniFile, "General", "Timers")
+    IniWrite(this.startTimerAtStartupChk.Value, this.iniFile, "General", "StartTimerAtStartup")
+    IniWrite(this.autoStopWhenAwayChk.Value, this.iniFile, "General", "AutoStopWhenAway")
     MsgBox("Settings have been saved.")
+    this.LoadTimers()
+    this.OnClose()
   }
 
   ; Load settings function
   LoadSettings() {
-    if (FileExist(iniFile)) {
-      timers := StrSplit(IniRead(iniFile, "General", "Timers", ""), "|")
-      for timer in timers {
-        parts := StrSplit(timer, ",")
-        if (parts.Length == 2) {
-          if (parts[1] == "Focus Time")
-            this.timerDetailLV.Add(, "", parts[1], parts[2])
-          else
-            this.timerDetailLV.Add(, "", parts[1], parts[2])
-        }
-      }
-
-      if (timers.Length == 0) {
-        this.ResetSettings()
-        this.SaveSettings()
-      }
-      this.UpdateOrder()
+    this.timerDetailLV.Delete()
+    timers := StrSplit(IniRead(this.iniFile, "General", "Timers", ""), "|")
+    if (!FileExist(this.iniFile) || timers.Length == 0) {
+      this.ResetSettings()
+      this.SaveSettings()
     }
+    for timer in timers {
+      parts := StrSplit(timer, ",")
+      if (parts.Length == 2) {
+        if (parts[1] == "Focus Time")
+          this.timerDetailLV.Add(, "", parts[1], parts[2])
+        else
+          this.timerDetailLV.Add(, "", parts[1], parts[2])
+      }
+    }
+    this.UpdateOrder()
+    this.startTimerAtStartupChk.Value := IniRead(this.iniFile, "General", "StartTimerAtStartup")
+    this.autoStopWhenAwayChk.Value := IniRead(this.iniFile, "General", "AutoStopWhenAway")
   }
 
   ; Reset settings function
@@ -254,71 +357,4 @@ Class Setting {
     }
     return result
   }
-
-  ; Update button states
-  UpdateButtonStates(*) {
-    this.saveBtn.Enabled := (this.timerDetailLV.GetCount() > 0)
-    this.resetBtn.Enabled := true
-  }
-}
-
-; ======================================================================================================================
-; LV_TV_WantReturnSC (SubClassing)
-;     'Fakes' Return key processing for ListView and Treeview controls which otherwise won't process it.
-;     If enabled, the control will receive a NM_RETURN (-4) notification whenever the Return key is pressed while
-;     the control has the focus.
-; Usage:
-;     To register a control call the functions once and pass the Gui.Control object as the first parameter.
-;     To deregister it, call the function again with the same Gui.Control object as the first parameter.
-;     You may pass a function object in the second parameterto be used as subclassproc for the specified control.
-;     This function must accept 6 parameters. Look at the built-in SubClassProc method for further details.
-; ----------------------------------------------------------------------------------------------------------------------
-; NM_RETURN    -> https://learn.microsoft.com/en-us/windows/win32/controls/nm-return-list-view-
-;              -> https://learn.microsoft.com/en-us/windows/win32/controls/nm-return-tree-view-
-; WM_KEYDOWN   -> https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
-; ======================================================================================================================
-Class LV_TV_WantReturnSC {
-  Static Ctrls := Map()
-  Static SCProc := CallbackCreate(ObjBindMethod(LV_TV_WantReturnSC, "SubClassProc"), , 6)
-  ; -------------------------------------------------------------------------------------------------------------------
-  Static Register(CtrlObj, SubClassProc?) {
-    If (Type(CtrlObj) = "Gui.ListView") || (Type(CtrlObj) = "Gui.TreeView") {
-      Local Hwnd := CtrlObj.Hwnd, SCP := 0
-      If This.Ctrls.Has(Hwnd) { ; the control is already registered, remove it
-        DllCall("RemoveWindowSubclass", "Ptr", Hwnd, "Ptr", This.Ctrls[Hwnd].SCP, "UPtr", Hwnd, "Int")
-        This.Ctrls.Delete(Hwnd)
-        Return True
-      }
-      SCP := IsSet(SubClassProc) && IsObject(SubClassProc) ? CallbackCreate(SubClassProc, , 6) : This.SCProc
-      This.Ctrls[CtrlObj.Hwnd] := { CID: This.GetDlgCtrlID(Hwnd), HGUI: CtrlObj.Gui.Hwnd, SCP: SCP }
-      Return DllCall("SetWindowSubclass", "Ptr", Hwnd, "Ptr", SCP, "Ptr", Hwnd, "Ptr", SCP, "UInt")
-    }
-    Return False
-  }
-  ; -------------------------------------------------------------------------------------------------------------------
-  Static SubClassProc(HWND, Msg, wParam, lParam, ID, Data) {
-    Static NMHDR := Buffer(24, 0) ; NMHDR structure 64-bit
-    Static NM_RETURN := -4
-    Switch Msg {
-      Case 135: ; WM_GETDLGCODE (0x0087)
-        If (wParam = 13) ; VK_RETURN
-          Return 4 ; DLGC_WANTALLKEYS
-        else If (wParam = 46) ; VK_DEL
-          Return 4 ; DLGC_WANTALLKEYS
-      Case 256: ; WM_KEYDOWN (0x0100)
-        If (wParam = 13) { ; VK_RETURN
-          Local Ctl := This.Ctrls[Hwnd]
-          If !(lParam & 0x40000000) { ; not auto-repetition
-            NumPut("Ptr", HWND, "Ptr", Ctl.CID, "Ptr", NM_RETURN, NMHDR)
-            PostMessage(0x004E, Ctl.CID, NMHDR.Ptr, Ctl.HGUI) ; WM_NOTIFY
-          }
-          Return 0
-        }
-      Case 2:   ; WM_DESTROY (0x0002)
-        DllCall("RemoveWindowSubclass", "Ptr", HWND, "Ptr", Data, "UPtr", Hwnd)
-    }
-    Return DllCall("DefSubclassProc", "Ptr", HWND, "UInt", Msg, "Ptr", wParam, "Ptr", lParam, "Ptr")
-  }
-  ; -------------------------------------------------------------------------------------------------------------------
-  Static GetDlgCtrlID(Hwnd) => DllCall("GetDlgCtrlID", "Ptr", Hwnd, "Int")
 }
