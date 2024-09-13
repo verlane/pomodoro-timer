@@ -41,7 +41,8 @@ Class ClassTimer {
   }
 
   ToString() {
-    return "Timer ID: " . this.id . "`n"
+    return "`n`n"
+      . "Timer ID: " . this.id . "`n"
       . "Order: " . this.order . "`n"
       . "Type: " . this.type . "`n"
       . "Setting Time: " . this.settingTimeSec . " sec`n"

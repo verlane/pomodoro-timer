@@ -1,9 +1,6 @@
 Class ClassMain {
   WINDOW_TITLE := "BSB Pomodoro Timer"
 
-  FINISH_WORK_COUNT := 16
-  TIME_TO_FOCUS := 25 * 60
-
   TIME_TO_STOP_AUTO := 1 * 60 * 1000 ; 1 min
   GUI_MIN_WIDTH := 64
   GUI_MAX_WIDTH := 186
@@ -54,8 +51,7 @@ Class ClassMain {
     this.pomodoroCount := this.LoadPomodoroCount()
     this.currentTimer := this.setting.GetTimer(this.pomodoroCount + 1)
 
-
-    workCountLabel := Format("{:02d}:00 {:02d}", Floor(this.TIME_TO_FOCUS / 60), this.pomodoroCount)
+    workCountLabel := Format("{:02d}:00 {:02d}", Floor(this.currentTimer.settingTimeSec / 60), this.pomodoroCount)
     this.elapsedTimeText := this.mainGui.Add("Text", "x2 y3 w140 h20", workCountLabel)
 
     startTimerButton := this.mainGui.Add("Button", "x66 y0 w50 h20 Default", "&Start")
@@ -67,7 +63,7 @@ Class ClassMain {
     quitButton := this.mainGui.Add("Button", "x166 y0 w20 h20", "&X")
     quitButton.OnEvent("Click", (*) => this.Quit())
 
-    this.workCountProgress := this.mainGui.Add("Progress", "x-1 y0 w" . (this.GUI_MIN_WIDTH + 2) . " h3 -Smooth", (this.pomodoroCount * 100 / this.FINISH_WORK_COUNT))
+    this.workCountProgress := this.mainGui.Add("Progress", "x-1 y0 w" . (this.GUI_MIN_WIDTH + 2) . " h3 -Smooth", (this.pomodoroCount * 100 / this.setting.GetLvLastOrder()))
     this.mainGui.Show("x" . this.positionX . " y" . this.positionY . " w" . this.GUI_MAX_WIDTH . " h20")
 
     OnMessage(0x200, ObjBindMethod(this, "PomoWmMouseMove"))
@@ -89,11 +85,15 @@ Class ClassMain {
   }
 
   LoadSetting() {
-    this.currentTimer := this.setting.GetNextFocusingTimerByPomodoroCount(this.pomodoroCount)
-    this.FINISH_WORK_COUNT := this.setting.GetLvLastOrder()
-    this.TIME_TO_FOCUS := this.currentTimer.settingTimeSec
-    OutputDebug("AHK: " . this.FINISH_WORK_COUNT . " / " . this.TIME_TO_FOCUS)
-    OutputDebug("AHK: " . this.currentTimer.ToString())
+    tmpCurrentTimer := this.currentTimer
+    if (this.currentTimer.IsFocusingTimer()) {
+      this.currentTimer := this.setting.GetNextFocusingTimerByPomodoroCount(this.pomodoroCount)
+    } else {
+      this.currentTimer := this.setting.GetNextBreakTimerByPomodoroCount(this.pomodoroCount)
+    }
+    if (tmpCurrentTimer) {
+      this.currentTimer.elapsedTimeSec := tmpCurrentTimer.elapsedTimeSec
+    }
   }
 
   HandleStartOrStopOption(menuItemName, callbackOrSubmenu, options) {
@@ -108,6 +108,8 @@ Class ClassMain {
     if (RegExMatch(menuItemName, "i)^([`+`-][0-9]+) Pomodoro$", &SubPat)) {
       this.pomodoroCount := this.pomodoroCount + SubPat[1]
       this.WritePomodoroCount(this.pomodoroCount)
+      this.LoadSetting()
+      this.TimerHandler()
     }
   }
 
@@ -128,7 +130,6 @@ Class ClassMain {
 
   ; Stop timer function
   StopTimer() {
-    OutputDebug("AHK: " . "stop")
     try {
       this.trayMenu.Rename("Stop Timer", "Start Timer")
     } catch TargetError as err {
@@ -136,7 +137,6 @@ Class ClassMain {
     this.ShowGui()
     this.mainGui.BackColor := this.GetDefaultGuiColor()
     SetTimer(this.timerFunc, 0)
-    OutputDebug("AHK: " . "stop")
   }
 
   ; Timer handler function
@@ -177,7 +177,6 @@ Class ClassMain {
     this.ShowLabel(remainingTimeSec, this.currentTimer.type, this.pomodoroCount)
 
     nextTimer := this.currentTimer.nextTimer
-    OutputDebug("AHK: " . nextTimer.ToString())
     if (this.currentTimer.type != nextTimer.type) {
       if (this.currentTimer.IsFocusingTimer()) {
         if (this.MsgBoxEx("To keep focusing?") == "Yes") {
@@ -195,12 +194,7 @@ Class ClassMain {
       this.currentTimer := nextTimer
     }
 
-    ; if (!this.currentTimer) {
-    ;   this.currentTimer := this.setting.GetNextFocusingTimerByPomodoroCount(this.pomodoroCount)
-    ;   this.currentTimer.Reset()
-    ; }
-
-    ; this.ShowLabel(remainingTimeSec, this.currentTimer.type, this.pomodoroCount)
+    this.currentTimer.Reset()
   }
 
   Quit() {

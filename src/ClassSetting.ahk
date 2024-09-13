@@ -1,6 +1,5 @@
 Class ClassSetting {
-  ; SECS := 60
-  SECS := 2
+  SECS := 60
 
   __New(main) {
     this.timers := []
@@ -45,14 +44,14 @@ Class ClassSetting {
     contextMenu.Add("Delete Item", ObjBindMethod(this, "DeleteItem"))
     this.timerDetailLV.OnEvent("ContextMenu", (*) => contextMenu.Show())
 
-    this.startTimerAtStartupChk := this.settingGui.Add("Checkbox", "x10 y285 w180 h30", "Start Timer At Startup")
-    this.autoStopWhenAwayChk := this.settingGui.Add("Checkbox", "x200 y285 w160 h30", "Auto Stop When Away")
+    this.startTimerAtStartupChk := this.settingGui.Add("Checkbox", "x10 y285 w260 h20", "Start timer at startup")
+    this.autoStopWhenAwayChk := this.settingGui.Add("Checkbox", "x10 y305 w260 h20", "Auto stop when away for 1 min")
 
     ; Buttons
-    resetBtn := this.settingGui.Add("Button", "x10 y320 w80 h30", "&Reset")
+    resetBtn := this.settingGui.Add("Button", "x10 y330 w80 h30", "&Reset")
     resetBtn.OnEvent("Click", ObjBindMethod(this, "ResetSettings"))
 
-    saveBtn := this.settingGui.Add("Button", "x100 y320 w80 h30 Default", "&Save")
+    saveBtn := this.settingGui.Add("Button", "x100 y330 w80 h30 Default", "&Save")
     saveBtn.OnEvent("Click", ObjBindMethod(this, "SaveSettings"))
 
     this.LoadSettings()
@@ -63,8 +62,8 @@ Class ClassSetting {
     count := this.timerDetailLV.GetCount()
     Loop count {
       rowIndex := count - A_Index + 1
-      if (this.__GetLvType(A_Index) == "F") {
-        return this.timerDetailLV.GetText(rowIndex, 1)
+      if (this.__GetLvType(rowIndex) == "F") {
+        return this.__GetLvOrder(rowIndex)
       }
     }
     return 1
@@ -100,9 +99,9 @@ Class ClassSetting {
       prevTimer := currentTimer
     }
 
-    ; if (1 < this.timers.Length) {
-    ;   this.timers[this.timers.Length].nextTimer := this.GetNextFocusingTimerByPomodoroCount(this.timers.Length)
-    ; }
+    if (1 < this.timers.Length) {
+      this.timers[this.timers.Length].nextTimer := this.GetNextFocusingTimerByPomodoroCount(this.timers.Length)
+    }
   }
 
   GetNextFocusingTimerByPomodoroCount(pomodoroCount) {
@@ -118,6 +117,26 @@ Class ClassSetting {
     }
     if (lastFocusingTimer) {
       return lastFocusingTimer
+    }
+
+    return timer[timer.Length]
+  }
+
+  GetNextBreakTimerByPomodoroCount(pomodoroCount) {
+    breakTimer := false
+
+    for timer in this.timers {
+      if (timer.order) {
+        lastFocusingTimer := timer
+        if (pomodoroCount < timer.order && breakTimer) {
+          return breakTimer
+        }
+      } else {
+        breakTimer := timer
+      }
+    }
+    if (breakTimer) {
+      return breakTimer 
     }
 
     return timer[timer.Length]
@@ -309,9 +328,11 @@ Class ClassSetting {
     IniWrite(this.StrJoin(timers, "|"), this.iniFile, "General", "Timers")
     IniWrite(this.startTimerAtStartupChk.Value, this.iniFile, "General", "StartTimerAtStartup")
     IniWrite(this.autoStopWhenAwayChk.Value, this.iniFile, "General", "AutoStopWhenAway")
-    MsgBox("Settings have been saved.")
     this.LoadTimers()
     this.OnClose()
+    ToolTip("Settings have been saved.")
+    Sleep(3000)
+    ToolTip
   }
 
   ; Load settings function
