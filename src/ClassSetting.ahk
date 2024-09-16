@@ -322,9 +322,23 @@ Class ClassSetting {
   ; Save settings function
   SaveSettings(*) {
     timers := []
+    focusCount := 0
+    breakCount := 0
     Loop this.timerDetailLV.GetCount() {
-      timers.Push(this.timerDetailLV.GetText(A_Index, 2) . "," . this.timerDetailLV.GetText(A_Index, 3))
+      timerType := this.timerDetailLV.GetText(A_Index, 2)
+      timerDuration := this.timerDetailLV.GetText(A_Index, 3)
+      timers.Push(timerType . "," . timerDuration)
+      if (timerType == "Focus Time")
+        focusCount++
+      else if (timerType == "Break Time")
+        breakCount++
     }
+    
+    if (focusCount == 0 || breakCount == 0) {
+      MsgBox("Please register at least one Focus Time and one Break Time.")
+      return
+    }
+    
     IniWrite(this.StrJoin(timers, "|"), this.iniFile, "General", "Timers")
     IniWrite(this.startTimerAtStartupChk.Value, this.iniFile, "General", "StartTimerAtStartup")
     IniWrite(this.autoStopWhenAwayChk.Value, this.iniFile, "General", "AutoStopWhenAway")
@@ -362,7 +376,11 @@ Class ClassSetting {
     this.timerDetailLV.Delete()
     Loop 16 {
       this.timerDetailLV.Add(, A_Index, "Focus Time", "25")
-      this.timerDetailLV.Add(, "", "Break Time", "5")
+      if (Mod(A_Index, 4) == 0) {
+        this.timerDetailLV.Add(, "", "Break Time", "15")
+      } else {
+        this.timerDetailLV.Add(, "", "Break Time", "5")
+      }
     }
     this.startTimerAtStartupChk.Value := 1
     this.autoStopWhenAwayChk.Value := 1
