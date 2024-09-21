@@ -21,11 +21,13 @@ Class ClassMain {
       this.positionY := 0
     }
 
-
     ; Tray Settings
     this.trayMenu := A_TrayMenu ; For convenience.
     this.trayMenu.Delete()
     this.trayMenu.Add("Start Timer", ObjBindMethod(this, "HandleStartOrStopOption"))
+    this.trayMenu.Add()
+    this.trayMenu.Add("&Prev Timer", ObjBindMethod(this, "HandleMoveTimerOption"))
+    this.trayMenu.Add("&Next Timer", ObjBindMethod(this, "HandleMoveTimerOption"))
     this.trayMenu.Add()
     this.trayMenu.Add("+1 Pomodoro", ObjBindMethod(this, "HandleAddPomodoroOption"))
     this.trayMenu.Add("-1 Pomodoro", ObjBindMethod(this, "HandleAddPomodoroOption"))
@@ -78,6 +80,7 @@ Class ClassMain {
     }
 
     this.LoadSetting()
+    this.UpdatePrevPomodoroMenuState()
   }
 
   OnSettingGuiClosed() {
@@ -107,9 +110,49 @@ Class ClassMain {
   HandleAddPomodoroOption(menuItemName, callbackOrSubmenu, options) {
     if (RegExMatch(menuItemName, "i)^([`+`-][0-9]+) Pomodoro$", &SubPat)) {
       this.pomodoroCount := this.pomodoroCount + SubPat[1]
+      if (this.pomodoroCount < 0) {
+        this.pomodoroCount := 0
+      }
       this.WritePomodoroCount(this.pomodoroCount)
       this.LoadSetting()
       this.TimerHandler()
+      this.UpdatePrevPomodoroMenuState()
+    }
+  }
+
+  HandleMoveTimerOption(menuItemName, callbackOrSubmenu, options) {
+    if (menuItemName == "&Prev Timer") {
+      prevTimer := this.currentTimer.prevTimer
+      if (prevTimer) {
+        this.currentTimer := prevTimer
+        if (this.currentTimer.IsFocusingTimer() && this.pomodoroCount > 0) {
+          this.pomodoroCount -= 1
+        }
+      }
+    } else if (menuItemName == "&Next Timer") {
+      nextTimer := this.currentTimer.nextTimer
+      if (nextTimer) {
+        if (this.currentTimer.IsFocusingTimer()) {
+          this.pomodoroCount += 1
+        }
+        this.currentTimer := nextTimer
+      }
+    }
+
+    if (this.currentTimer.IsFocusingTimer()) {
+      this.WritePomodoroCount(this.pomodoroCount)
+    }
+
+    this.LoadSetting()
+    this.TimerHandler()
+    this.UpdatePrevPomodoroMenuState()
+  }
+
+  UpdatePrevPomodoroMenuState() {
+    if (this.pomodoroCount == 0) {
+      this.trayMenu.Disable("&Prev Timer")
+    } else {
+      this.trayMenu.Enable("&Prev Timer")
     }
   }
 
@@ -117,7 +160,6 @@ Class ClassMain {
     this.setting.Show()
   }
 
-  ; Start timer function
   StartTimer() {
     try {
       this.trayMenu.Rename("Start Timer", "Stop Timer")
@@ -128,7 +170,6 @@ Class ClassMain {
     SetTimer(this.timerFunc, 1000)
   }
 
-  ; Stop timer function
   StopTimer() {
     try {
       this.trayMenu.Rename("Stop Timer", "Start Timer")
@@ -139,7 +180,6 @@ Class ClassMain {
     SetTimer(this.timerFunc, 0)
   }
 
-  ; Timer handler function
   TimerHandler() {
     this.mainGui.Opt("+AlwaysOnTop")
     if (this.currentTimer.IsFocusingTimer() && A_TimeIdlePhysical >= this.TIME_TO_STOP_AUTO) {
@@ -171,6 +211,7 @@ Class ClassMain {
       SoundPlay A_ScriptDir . "\audio\Sound1.mp3"
       this.pomodoroCount := this.pomodoroCount + 1
       this.WritePomodoroCount(this.pomodoroCount)
+      this.UpdatePrevPomodoroMenuState()
     } else {
       SoundPlay A_ScriptDir . "\audio\Sound2.mp3"
     }
