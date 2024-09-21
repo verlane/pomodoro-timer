@@ -34,7 +34,7 @@ Class ClassMain {
     this.trayMenu.Add()
     this.trayMenu.Add("&Settings", (*) => this.ShowSettingGui())
     this.trayMenu.Add()
-    this.trayMenu.Add("About", (*) => MsgBox("verlane/pomodoro-timer v0.1.0"))
+    this.trayMenu.Add("About", (*) => MsgBox("verlane/pomodoro-timer v0.2.0"))
     this.trayMenu.Add("&Reload", (*) => Reload())
     this.trayMenu.Add("E&xit", (*) => ExitApp())
 
