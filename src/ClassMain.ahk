@@ -69,6 +69,7 @@ Class ClassMain {
     this.workCountProgress := this.mainGui.Add("Progress", "x-1 y0 w" . (this.GUI_MIN_WIDTH + 2) . " h3 -Smooth", (this.pomodoroCount * 100 / this.setting.GetLvLastOrder()))
     this.mainGui.Show("x" . this.positionX . " y" . this.positionY . " w" . this.GUI_MAX_WIDTH . " h20")
 
+    this.isLButtonDown := false
     OnMessage(0x200, ObjBindMethod(this, "PomoWmMouseMove"))
 
     if (startTimerAtStartup) {
@@ -284,9 +285,12 @@ Class ClassMain {
           return
         }
         PostMessage 0xA1, 2, , , "A" ; WM_NCLBUTTONDOWN
-        this.SavePosition()
+        this.isLButtonDown := true
       } catch TargetError as err {
       }
+    } else if (wparam = 0 && this.isLButtonDown) { ; Beacuse the LButton up is not working. TODO
+      this.isLButtonDown := false
+      this.SavePosition()
     }
   }
 
