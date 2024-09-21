@@ -70,7 +70,6 @@ Class ClassMain {
     this.mainGui.Show("x" . this.positionX . " y" . this.positionY . " w" . this.GUI_MAX_WIDTH . " h20")
 
     OnMessage(0x200, ObjBindMethod(this, "PomoWmMouseMove"))
-    OnMessage(0x202, ObjBindMethod(this, "PomoWmLButtonUp"))
 
     if (startTimerAtStartup) {
       IniWrite(true, this.INI_FILE, "General", "StartTimerAtStartup")
