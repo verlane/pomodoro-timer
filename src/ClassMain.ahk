@@ -48,6 +48,7 @@ Class ClassMain {
       }
     }
 
+    this.currentTimer := false ; Ignore being called when ini file does not exist TODO
     this.setting := ClassSetting(this)
 
     this.pomodoroCount := this.LoadPomodoroCount()
@@ -69,6 +70,7 @@ Class ClassMain {
     this.mainGui.Show("x" . this.positionX . " y" . this.positionY . " w" . this.GUI_MAX_WIDTH . " h20")
 
     OnMessage(0x200, ObjBindMethod(this, "PomoWmMouseMove"))
+    OnMessage(0x202, ObjBindMethod(this, "PomoWmLButtonUp"))
 
     if (startTimerAtStartup) {
       IniWrite(true, this.INI_FILE, "General", "StartTimerAtStartup")
@@ -84,6 +86,9 @@ Class ClassMain {
   }
 
   OnSettingGuiClosed() {
+    if (!this.currentTimer) { ; Ignore being called when ini file does not exist TODO
+      return
+    }
     this.LoadSetting()
   }
 

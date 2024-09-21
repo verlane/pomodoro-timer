@@ -346,9 +346,6 @@ Class ClassSetting {
     IniWrite(this.autoStopWhenAwayChk.Value, this.iniFile, "General", "AutoStopWhenAway")
     this.LoadTimers()
     this.OnClose()
-    ToolTip("Settings have been saved.")
-    Sleep(3000)
-    ToolTip
   }
 
   ; Load settings function
