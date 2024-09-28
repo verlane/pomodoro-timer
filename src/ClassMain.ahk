@@ -34,7 +34,7 @@ Class ClassMain {
     this.trayMenu.Add()
     this.trayMenu.Add("&Settings", (*) => this.ShowSettingGui())
     this.trayMenu.Add()
-    this.trayMenu.Add("About", (*) => MsgBox("verlane/pomodoro-timer v0.2.0"))
+    this.trayMenu.Add("About", (*) => MsgBox("verlane/pomodoro-timer v0.2.1"))
     this.trayMenu.Add("&Reload", (*) => Reload())
     this.trayMenu.Add("E&xit", (*) => ExitApp())
 
@@ -73,12 +73,7 @@ Class ClassMain {
     OnMessage(0x200, ObjBindMethod(this, "PomoWmMouseMove"))
 
     if (startTimerAtStartup) {
-      IniWrite(true, this.INI_FILE, "General", "StartTimerAtStartup")
       this.StartTimer()
-    }
-
-    if (autoStopWhenAway) {
-      IniWrite(true, this.INI_FILE, "General", "AutoStopWhenAway")
     }
 
     this.LoadSetting()
@@ -102,6 +97,8 @@ Class ClassMain {
     if (tmpCurrentTimer) {
       this.currentTimer.elapsedTimeSec := tmpCurrentTimer.elapsedTimeSec
     }
+    this.startTimerAtStartup := this.setting.startTimerAtStartupChk.Value
+    this.autoStopWhenAway := this.setting.autoStopWhenAwayChk.Value
   }
 
   HandleStartOrStopOption(menuItemName, callbackOrSubmenu, options) {
@@ -187,7 +184,7 @@ Class ClassMain {
 
   TimerHandler() {
     this.mainGui.Opt("+AlwaysOnTop")
-    if (this.currentTimer.IsFocusingTimer() && A_TimeIdlePhysical >= this.TIME_TO_STOP_AUTO) {
+    if (this.autoStopWhenAway && this.currentTimer.IsFocusingTimer() && A_TimeIdlePhysical >= this.TIME_TO_STOP_AUTO) {
       this.mainGui.BackColor := 0x555555
       this.elapsedTimeText.Opt("+cWhite")
       return
