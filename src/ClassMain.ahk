@@ -1,4 +1,5 @@
 Class ClassMain {
+  VERSION := "v0.2.2"
   WINDOW_TITLE := "BSB Pomodoro Timer"
 
   TIME_TO_STOP_AUTO := 1 * 60 * 1000 ; 1 min
@@ -34,7 +35,7 @@ Class ClassMain {
     this.trayMenu.Add()
     this.trayMenu.Add("&Settings", (*) => this.ShowSettingGui())
     this.trayMenu.Add()
-    this.trayMenu.Add("About", (*) => MsgBox("verlane/pomodoro-timer v0.2.1"))
+    this.trayMenu.Add("About", (*) => MsgBox("verlane/pomodoro-timer " . this.VERSION))
     this.trayMenu.Add("&Reload", (*) => Reload())
     this.trayMenu.Add("E&xit", (*) => ExitApp())
 
@@ -273,18 +274,19 @@ Class ClassMain {
     return count
   }
 
-  PomoWmMouseMove(wparam, lparam, msg, hwnd) {
-    if (wparam = 1) { ; LButton
-      try {
-        winClass := WinGetClass("A")
-        winTitle := WinGetTitle("A")
-        if (winClass != "AutoHotkeyGUI" || winTitle == "Pomodoro Timer Alert" || winTitle == "Pomodoro Timer Settings") { ; is MsgBox?
-          return
-        }
-        PostMessage 0xA1, 2, , , "A" ; WM_NCLBUTTONDOWN
-        this.isLButtonDown := true
-      } catch TargetError as err {
+  __IsOnMainGui() {
+    try {
+      if (WinGetTitle("A") == this.WINDOW_TITLE) {
+        return true
       }
+    } catch TargetError as err {
+    }
+  }
+
+  PomoWmMouseMove(wparam, lparam, msg, hwnd) {
+    if (wparam = 1 && this.__IsOnMainGui()) { ; LButton
+      PostMessage 0xA1, 2, , , "A" ; WM_NCLBUTTONDOWN
+      this.isLButtonDown := true
     } else if (wparam = 0 && this.isLButtonDown) { ; Beacuse the LButton up is not working. TODO
       this.isLButtonDown := false
       this.SavePosition()
