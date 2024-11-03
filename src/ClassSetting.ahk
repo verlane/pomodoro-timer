@@ -77,7 +77,7 @@ Class ClassSetting {
 
     count := this.timerDetailLV.GetCount()
     Loop count {
-      timeSec := this.__GetLvTimeSec(A_Index) * this.SECS
+      timeSec := this.__GetLvTimeSec(A_Index)
       if (this.__GetLvType(A_Index) == "F") {
         totalElapsedTimeSec += timeSec
       }
@@ -85,7 +85,7 @@ Class ClassSetting {
 
     prevTimer := false
     Loop count {
-      timeSec := this.__GetLvTimeSec(A_Index) * this.SECS
+      timeSec := this.__GetLvTimeSec(A_Index)
 
       currentTimer := ClassTimer(A_Index, this.__GetLvOrder(A_Index), this.__GetLvType(A_Index), this.__GetLvTimeSec(A_Index), prevTotalElapsedTimeSec, totalElapsedTimeSec, prevTimer)
 

@@ -33,7 +33,7 @@ Class ClassTimer {
   }
 
   GetProgressValue() {
-    return (this.prevTotalElapsedTimeSec + this.elapsedTimeSec - this.settingTimeSec) * 100 / this.totalElapsedTimeSec
+    return (this.prevTotalElapsedTimeSec + this.elapsedTimeSec) / this.totalElapsedTimeSec * 100
   }
 
   Reset() {

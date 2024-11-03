@@ -1,9 +1,9 @@
 Class ClassMain {
-  VERSION := "v0.2.2"
+  VERSION := "v0.2.3"
   WINDOW_TITLE := "BSB Pomodoro Timer"
 
   TIME_TO_STOP_AUTO := 1 * 60 * 1000 ; 1 min
-  GUI_MIN_WIDTH := 64
+  GUI_MIN_WIDTH := 62
   GUI_MAX_WIDTH := 186
   INI_FILE := A_ScriptDir "\pomodoro-timer.ini"
 
@@ -223,12 +223,14 @@ Class ClassMain {
     nextTimer := this.currentTimer.nextTimer
     if (this.currentTimer.type != nextTimer.type) {
       if (this.currentTimer.IsFocusingTimer()) {
+        this.isLButtonDown := false ; to ignore moving mouse pointer on this msgbox
         if (this.MsgBoxEx("To keep focusing?") == "Yes") {
           this.currentTimer := ClassTimer.GetNextFocusingTimer(this.currentTimer)
         } else {
           this.currentTimer := nextTimer
         }
       } else {
+        this.isLButtonDown := false
         if (this.MsgBoxEx("Start focusing?") != "Yes") {
           this.StopTimer()
         }
@@ -288,8 +290,8 @@ Class ClassMain {
       PostMessage 0xA1, 2, , , "A" ; WM_NCLBUTTONDOWN
       this.isLButtonDown := true
     } else if (wparam = 0 && this.isLButtonDown) { ; Beacuse the LButton up is not working. TODO
-      this.isLButtonDown := false
       this.SavePosition()
+      this.isLButtonDown := false
     }
   }
 
